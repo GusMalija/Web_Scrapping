@@ -1,0 +1,221 @@
+---
+title: "Assignment 6. Web Scraping"
+subtitle: "Introduction to Data Science"
+date: "15 Oct 2020"
+author: "Augustine Malija"
+output: html_document
+---
+
+
+### 0. Preparation: Load packages
+
+```{r, message = FALSE}
+library(tidyverse)# for data manipulation
+library(rvest)#for easy download and manipulation of html
+library(stringr)#for string manipulation
+library(dplyr)#for data manipulation
+library(readr)#for parsing non numeric characters
+```
+
+
+<br>
+
+### 1. The ultimate regular expression (1pt)
+
+Find a regular expression that matches anything of any length! Prove that it works using several examples.
+
+
+```{r, eval = TRUE}
+#using the following sentence as an example
+example_sentence <- "1. A cup of coffee. -2. Morning concentrations are due to coffee."
+
+#examples
+str_extract(example_sentence, ".+")
+str_extract(example_sentence,".*")
+```
+
+
+<br>
+
+### 2. Finding strings that are matched by regular expressions (2pts)
+
+Describe the types of strings that conform to the following regular expressions and construct an example that is matched by the regular expression.
+
+a. [0-9]+\\$
+b. b[a-z]{1,4}
+c. .*?\\.txt$
+d. \\d{2}/\\d{2}/\\d{4}
+e. <(.+?)>.+?</\\1>
+
+```{r}
+# Example
+str_extract_all("Phone 150$, TV 690$", "[0-9]+\\$") # Answer: this regex describes prices in dollars
+
+#b.This regex matches anything in a string that starts with letter b and preceding four characters from letter b.
+str_extract_all("anzabiashara","b[a-z]{1,4}")
+#c. This regex matches characters of any arbitrary length in a string and their preceding characters but ends at .txt
+str_extract_all("ambrose878.txt:bos$.csv|  speak8r.txt",".*?\\.txt$")
+#d. This regex that matches dates. 
+str_extract_all("Today's date is 24/10/2020" ,"\\d{2}/\\d{2}/\\d{4}","\\d{2}/\\d{2}/\\d{4}")
+#e This regex that matches html tags
+str_extract_all("Most <h1> Data scientists </h1> scrap the web." ,"<(.+?)>.+?</\\1>")
+```
+
+<br>
+
+### 3. Manipulating an email address (2pts)
+
+Consider the mail address  datalover89[at]aol[dot]com. Now, complete the following tasks.
+
+a. Transform the string to a standard mail format (i.e., replace the square brackets with the appropriate symbols) using regular expressions.
+b. Now extract the local-part ("datalover89") and the domain ("aol") separately. 
+
+```{r}
+# enter your R code here
+#replacing with .
+mail_address <- "datalover89[at]aol[dot]com"
+#replacing with @
+str_sub(mail_address, 12,15) <- "@"
+#replacing dot with . from the resultant
+str_sub(mail_address, 16,20) <- "."
+
+#extracting the local part
+str_extract(mail_address, "^d[:alnum:]+")
+#extracting the domain
+str_extract(mail_address, "(?<=@)[^.]+(?=\\.)")
+```
+
+
+<br>
+
+### 4. A secret message (2pts)
+The following code hides a secret message. Crack it with R and regular expressions. Once you have cracked it, try to collapse the solution in one single string. <i>Hint: Some of the characters are more revealing than others!</i>
+
+```{r}
+#writing the secret code as a data frame
+secret <- c("clcopCow1zmstc0d87wnkig7OvdicpNuggvhryn92Gjuwczi8hqrfpRxs5Aj5dwpn0TanwoUwisdij7Lj8kpf03AT5Idr3coc0bt7yczjatOaootj55t3Nj3ne6c4Sfek.r1w1YwwojigOd6vrfUrbz2.2bkAnbhzgv4R9i05zEcrop.wAgnb.RqoE65fGEa1otfb7wXm24k.6t3sH9zqe5fy89n6Ed5t9kc4fR905gmc4Ogxo5nhk!gr")
+
+#extracting the message from the secret code
+secret <- str_extract_all(secret,"[[:upper:]]")
+
+#putting the message into words
+secret
+```
+
+<span style="color:blue">
+The secret message says "Congratulations, you are a regex hero"
+</span>
+
+
+<br>
+
+### 5. Scraping newspaper headlines (3pts)
+
+Use Selectorgadget and R to scrape the article headlines from https://www.theguardian.com/international. 
+
+a. Present the first 6 observations from the uncleaned vector of scraped headlines.
+
+b. Tidy the text data (e.g., remove irrelevant characters if there are any, and get rid of duplicates).
+
+c. Identify the 5 most frequent words in all headlines. (Hint: use a string processing function from the stringr package to split up the headings word by word, and use an empty space, " ", as splitting pattern.)
+
+
+```{r}
+# reading the html
+scraped_doc <- read_html("https://www.theguardian.com/international")
+
+#a. calling the first headline as a data frame with the scraped X Path
+headlines <- html_nodes(scraped_doc, xpath = '//*[contains(concat( " ", @class, " " ), concat( " ", "js-headline-text", " " ))]') 
+
+#extracting a data frame for only headlines
+headlines_raw <- html_text(headlines)
+
+#printing the first six observations from the headlines
+unique(head(headlines_raw,12))
+
+```
+
+b. cleaning and getting rid of duplicates
+```{r}
+headline_clean <- headlines_raw %>% 
+  #trimming white space before putting it as a dataframe
+  str_trim() %>%
+  #removing duplicates
+  unique() %>% 
+  #splitting word by word
+  str_split(" ") %>%
+  #unlisting the words to stand independently
+  unlist %>% 
+  #putting it in a table format
+  table() %>% 
+  #arranging words with their frequencies in a descending order
+  sort(decreasing = TRUE)
+```
+
+c. extracting the most frequent words
+```{r}
+head(headline_clean)
+```
+
+<span style="color:blue">
+Five most frequent words are; "the", "to", "of", and "and" on with frequencies of 27, 23,20,14 and 13 respectively.
+</span>
+
+
+<br>
+
+### 6. Towers of the world (3pts)
+
+Scrape the table "Towers proposed or under construction" from https://en.wikipedia.org/wiki/List_of_tallest_towers.
+
+a. Present the first 6 rows of the generated data frame.
+
+b. How many of those buildings are planned for observation purposes?
+
+c. What is the sum of the planned pinnacle height of all those towers? 
+
+
+```{r}
+#downloading a html behind the URL
+towers <- read_html("https://en.wikipedia.org/wiki/List_of_tallest_towers")
+
+#parsing the html url, trimming and filling missings with NAs
+towers_table <- html_table(towers, header = TRUE, fill = TRUE, trim = TRUE)
+#selecting my table of interest as the 5th table from the tables list
+towers_proposed <- towers_table[[7]]
+
+#presenting the first six rows of the generated data frame
+head(towers_proposed)
+```
+
+<br>
+b. Buildings planned for observation purposes
+
+```{r}
+#extracting the table as a data frame
+towers_proposed_frame <- data.frame(towers_proposed, stringsAsFactors = FALSE)
+
+
+#filtering towers for observational purposes
+observational <- towers_proposed_frame %>%
+  #filtering towers for observational purposes
+  filter(grepl("observation", Function))
+
+head(observational)
+```
+<span style="color:blue">
+Six towers are there for observational purposes as seen on the table above. Four for purely observational and two for observational mixed with telecommunication, exhibition and leisure.
+</span>
+
+
+c. Sum of planned pinnacle height of all those towers
+```{r}
+#omitting height notations and other characters to remain with only numbers for height
+towers_proposed_frame$Pinnacle.height <- parse_number(towers_proposed_frame$Pinnacle.height)
+
+#extracting sum of planned pinnacle height of all towers
+sum(towers_proposed_frame$Pinnacle.height)
+```
+<span style="color:blue">
+The sum of planned pinnacle height is 4665 metres.
+</span>
